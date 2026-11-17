@@ -1,0 +1,9 @@
+# Cloud GPU-only dependencies: install in Colab/Kaggle, NOT GitHub Codespaces.
+# Versions are bounded for a reproducible compatibility window; record resolved versions in the run summary.
+transformers>=4.51,<6
+datasets>=3.0,<5
+trl>=0.20,<1.0
+peft>=0.15,<1.0
+accelerate>=1.5,<2.0
+bitsandbytes>=0.45,<1.0
+safetensors>=0.5,<1.0

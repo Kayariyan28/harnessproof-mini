@@ -1,0 +1,21 @@
+name: Reproducibility checks (CPU, no API calls)
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e '.[dev]'
+      - run: python -m pytest -q
+      - run: python -m harnessproof.cli build-data
+      - run: python -m scripts.quality_gate --mode pilot
+      - run: python -m harnessproof.cli evaluate --backend heuristic --out runs/heuristic.json
+      - run: python -m compileall -q harnessproof scripts

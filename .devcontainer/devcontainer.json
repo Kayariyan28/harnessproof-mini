@@ -1,0 +1,9 @@
+{
+  "name": "HarnessProof OpenCode Cloud Lab (CPU only)",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" }
+  },
+  "postCreateCommand": "python -m pip install -e '.[dev]' && npm install --global @opencode/cli && python -m pytest -q",
+  "customizations": { "vscode": { "extensions": ["ms-python.python"] } }
+}

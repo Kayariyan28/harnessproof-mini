@@ -1,0 +1,137 @@
+# HarnessProof Mini
+
+**OpenCode/DeepSeek-guided research on small fine-tuned AI tool routers, synthetic dataset quality, RAG, multi-role agents, prompt caching, and honest evaluation.**
+
+Status: **open-source starter laboratory**. CPU tests and a hand-coded heuristic baseline have run; actual cloud GPU fine-tuning and DeepSeek/OpenCode teacher expansion have **not** been performed in this deliverable. Do not describe it as a validated fine-tuned model until cloud results exist.
+
+## Why this is useful
+
+The student model learns to choose **one safe next action** rather than trying to become another all-purpose chatbot. Its six allowable actions are `retrieve`, `calculate`, `clock`, `answer`, `clarify`, and `refuse`; only `retrieve/search_docs`, `calculate/calculator`, and `clock/clock_utc` have executable tools. This narrow, measurable decision task makes a realistic small-model experiment. It can be embedded as the routing component of larger agent systems if evaluation confirms acceptable accuracy.
+
+| Layer | Open tool | Where it runs | Cost rule |
+|---|---|---|---|
+| Development/teacher | [OpenCode](https://opencode.ai/) + configured DeepSeek or approved free alternative | Browser-hosted GitHub Codespaces | Free quota only; DeepSeek API may be paid |
+| Code/CI | Python, pytest, GitHub Actions | Browser-hosted Codespaces + GitHub | Free personal quotas |
+| Cloud training | [TRL](https://huggingface.co/docs/trl/), Transformers, PEFT, bitsandbytes | [Colab Free](https://colab.research.google.com/) or [Kaggle](https://www.kaggle.com/code) GPU | Free accelerator if allocated |
+| Student | `Qwen/Qwen2.5-0.5B-Instruct` | Cloud GPU only | Open-weight base; check base license |
+| RAG/tools | Lightweight Python package in this repo | Codespaces CPU or cloud GPU | No inference bill for heuristic path |
+| Caching | SQLite response cache; optional provider prefix cache | Codespaces CPU | Provider test opt-in |
+| Publication | GitHub source; optional Hugging Face adapter | Cloud | No base-weight upload to GitHub |
+
+**Zero cash spend is an experiment constraint, not a service-level guarantee.** Free GPUs are limited/unavailable at times. Codespaces consumes a monthly quota. DeepSeek's official API is not assumed free. OpenRouter's `:free` selection is rate-limited and may change. No paid fallback is enabled.
+
+## Browser-only start: GitHub Codespaces + OpenCode
+
+1. Make a new empty **user-owned** GitHub repo, e.g. `harnessproof-mini`. Open its **Code → Codespaces → Create codespace** browser environment. Personal free quota rules apply.
+2. Upload the provided `harnessproof-mini.zip` into the browser Codespaces Explorer (drag/drop or context-menu upload). This is a one-time small archive transfer; no local software, model download or GPU is required. From the Codespaces terminal, extract the ZIP into the repository root. If a top-level folder is present, copy its *contents*, including `.opencode`, `.github`, and `.devcontainer`, into the root. Reopen Codespaces in the devcontainer after `.devcontainer/devcontainer.json` is present so OpenCode and Python dependencies are installed automatically.
+3. Or, after you've committed the extracted files once, simply **clone or open your own repo** from Codespaces on subsequent sessions. Do not repeatedly upload ZIP files.
+4. Configure OpenCode in Codespaces using `/connect`, select your existing DeepSeek-compatible provider, then verify the exact configured model with `opencode models`. Verify **that specific model/route is free** before teacher augmentation. If the model isn't free, complete the offline experiment and avoid paid calls.
+5. Run the default zero-provider-call checks in Codespaces:
+
+```bash
+python -m pip install -e '.[dev]'
+python -m pytest -q
+python -m harnessproof.cli build-data
+python -m scripts.quality_gate --mode pilot
+python -m harnessproof.cli evaluate --backend heuristic --out runs/eval_heuristic.json
+python -m scripts.benchmark_cache --mode offline
+python -m scripts.audit_project
+```
+
+6. Ask OpenCode to execute the complete brief, which auto-discovers the seven skills under `.opencode/skills/`:
+
+```bash
+opencode models
+opencode run --agent build --file MASTER_EXECUTION_PROMPT.md \
+  "Read AGENTS.md and the attached brief, load project-orchestrator skill, and execute the phases with truthful evidence. No paid APIs or unapproved publication."
+```
+
+For optional synthetic paraphrase generation using a **verified free** OpenCode model:
+
+```bash
+export OPENCODE_MODEL='provider/your-verified-free-deepseek-route'
+python -m harnessproof.cli augment --model "$OPENCODE_MODEL" \
+  --max-seeds 10 --variants-per-seed 2 --confirmed-zero-cost
+python -m harnessproof.cli build-data --variants data/teacher_variants.jsonl
+python -m scripts.quality_gate --mode pilot
+```
+
+The teacher command makes model requests. It must **not** run merely because `OPENCODE_MODEL` was set; check price and quota first. The initial 90 manually authored synthetic seeds are small **pilot** material (54 train, 18 validation, 18 test). The `--mode publish` gate requires at least 200 training examples and additional provenance/human review before publication as a refined dataset.
+
+## Fully OpenCode-orchestrated Kaggle alternative
+
+If you prefer OpenCode to prepare and submit the remote GPU job rather than personally clicking Colab cells, use the **official Kaggle CLI** entirely inside Codespaces. After authenticating Kaggle (only with free GPU access), the `kaggle-cloud-runner` skill executes:
+
+```bash
+python -m pip install kaggle
+python -m scripts.prepare_kaggle \
+  --repo-url https://github.com/YOUR_GITHUB_USERNAME/harnessproof-mini.git \
+  --kaggle-user YOUR_KAGGLE_USERNAME
+kaggle kernels push -p runs/kaggle_submit --accelerator NvidiaTeslaT4
+kaggle kernels status YOUR_KAGGLE_USERNAME/harnessproof-mini-lab
+kaggle kernels output YOUR_KAGGLE_USERNAME/harnessproof-mini-lab \
+  --file-pattern '.*summary\.json$' -p runs/kaggle_results
+```
+
+The preparation step is offline; `kaggle kernels push` makes the real remote GPU submission and must be authorized. The generated Kaggle notebook is private by default. The source repo must be public so Kaggle can clone it without secrets. The Kaggle account and API/GPU/internet permissions may still require manual browser setup; do not claim end-to-end automation was verified until real results return. See [Kaggle automation runbook](docs/KAGGLE_AUTOMATION.md).
+
+## Browser GPU stage: train QLoRA, LoRA, optional full
+
+Open [`notebooks/cloud_gpu_lab.ipynb`](notebooks/cloud_gpu_lab.ipynb) in **Google Colab**, or copy its cells into **Kaggle** with Internet and GPU enabled. Change `REPO_URL` to your new public GitHub repo. The notebook clones the project into the **remote ephemeral notebook filesystem**; the Mac stores no model weights. Use the provided cloud script or run directly:
+
+```bash
+# IN COLAB/KAGGLE GPU ONLY, from cloned repo root
+python -m pip install -r requirements-cloud.txt
+python -m scripts.cloud_train --mode qlora --steps 40 --eval-max 18
+python -m scripts.cloud_train --mode lora --steps 40 --eval-max 18
+# Optional memory-heavy control only if free GPU quota allows:
+python -m scripts.cloud_train --mode full --steps 40 --eval-max 18
+```
+
+Each run computes **pretrained baseline** and **fine-tuned** metrics on fixed test prompts. Quantized LoRA trains an adapter; full model mode does not automatically save a ~GB checkpoint. The script records model ID, dataset hashes, GPU, time, maximum allocated GPU memory and measured routing accuracy. These are example settings, not a claim of improved performance.
+
+After QLoRA succeeds:
+
+```bash
+python -m scripts.cloud_harness --quantize \
+  --adapter-path runs/cloud/qlora/adapter \
+  --request "Find the prompt caching documentation"
+```
+
+The GPU environment is ephemeral. Before disconnecting, **save metrics or adapters to your approved cloud destination**. No automatic uploads occur. Keep raw model weights out of GitHub; Hugging Face adapter publication is optional and requires an explicit decision.
+
+## Repository map
+
+```
+AGENTS.md                  OpenCode operating guardrails
+MASTER_EXECUTION_PROMPT.md All phases and acceptance criteria
+.opencode/skills/          Seven reusable OpenCode skills
+harnessproof/              Dataset, harness, contracts, RAG, metrics, cache, teacher
+scripts/cloud_train.py     Colab/Kaggle GPU fine-tuning and held-out evaluation
+scripts/cloud_harness.py   Adapter inference + guarded multi-role pipeline
+scripts/benchmark_cache.py Offline and optional provider prefix caching
+scripts/quality_gate.py    Dataset integrity/scale checks
+notebooks/cloud_gpu_lab.ipynb Remote browser GPU notebook
+data/                       Pilot seed scenarios and deterministic splits
+docs/                       Protocol, runbook, cards, status and evidence
+.github/workflows/ci.yml   CPU-only GitHub Actions checks
+```
+
+## Research integrity and release constraints
+
+- Compare models on identical held-out families; include accuracy, refusal recall, invalid outputs, retrieval errors, memory/time and failure examples.
+- Prompt cache **response memoization** is not the same as model-provider **prefix/KV caching**.
+- The 'multi-agent' architecture contains **role-specialized components**; do not claim multiple separately fine-tuned LLMs or automatic factual verification.
+- Never commit cloud caches, `.safetensors`, paid tokens, API keys, private data or downloaded models.
+- Code is provided with an MIT license. Base model, provider-generated outputs and derived datasets may have **separate licenses**; verify them before redistribution.
+- Unproven parts and blockers are listed in `docs/reports/PHASE_STATUS.md`.
+
+## References
+
+- OpenCode skills: https://opencode.ai/docs/skills
+- OpenCode CLI: https://opencode.ai/docs/cli/commands
+- Hugging Face TRL + PEFT: https://huggingface.co/docs/trl/peft_integration
+- Colab free GPU limitations: https://research.google.com/colaboratory/faq.html
+- Kaggle GPU advice: https://www.kaggle.com/docs/efficient-gpu-usage
+- GitHub Codespaces included usage: https://docs.github.com/en/billing/reference/product-usage-included
+- OpenRouter free model library: https://openrouter.ai/collections/free-models/

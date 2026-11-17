@@ -1,0 +1,10 @@
+{
+  "train": 54,
+  "valid": 18,
+  "test": 18,
+  "rejected_variants": 0,
+  "provenance": {
+    "seed": 90
+  },
+  "split_strategy": "family_holdout"
+}
