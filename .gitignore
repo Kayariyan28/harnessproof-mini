@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 .venv-*/
 *.egg-info/
+data/mlx/
 .env
 .env.*
 !.env.example

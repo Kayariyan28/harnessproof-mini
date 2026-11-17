@@ -1,0 +1,4 @@
+# Apple Silicon 4-bit QLoRA-equivalent path (MLX). No CUDA, no cloud account.
+# Loads a 4-bit quantized Qwen2.5-0.5B and trains LoRA adapters on it.
+# Verified with mlx 0.32.4 / mlx-lm 0.32.2 on macOS arm64.
+mlx-lm>=0.28,<1.0

@@ -93,6 +93,24 @@ uv pip install --python .venv-train/bin/python -r requirements-local-mps.txt
 
 Measured results are recorded in [Experiment results](docs/reports/EXPERIMENT_RESULTS.md). The adapter and model cache stay in `runs/` / the Hugging Face cache and are git-ignored; never commit weights.
 
+### 4-bit QLoRA-equivalent with MLX (no CUDA, no account)
+
+bitsandbytes QLoRA needs CUDA, but MLX can train LoRA adapters on a **4-bit quantized** base on Apple Silicon. This is the closest free substitute for the QLoRA arm; it is not bitsandbytes and must be labelled separately.
+
+```bash
+uv venv --python 3.11 .venv-mlx
+uv pip install --python .venv-mlx/bin/python -r requirements-mlx.txt
+python -m scripts.prepare_mlx
+.venv-mlx/bin/python -m mlx_lm lora \
+  --model mlx-community/Qwen2.5-0.5B-Instruct-4bit \
+  --train --data data/mlx --fine-tune-type lora --num-layers 16 \
+  --batch-size 4 --iters 200 --learning-rate 2e-4 --max-seq-length 512 \
+  --mask-prompt --adapter-path runs/local/mlx_qlora/adapter --seed 42
+.venv-mlx/bin/python -m scripts.mlx_eval \
+  --adapter-path runs/local/mlx_qlora/adapter \
+  --out runs/local/mlx_qlora/eval_tuned.json
+```
+
 ## Browser GPU stage: train QLoRA, LoRA, optional full
 
 Open [`notebooks/cloud_gpu_lab.ipynb`](notebooks/cloud_gpu_lab.ipynb) in **Google Colab**, or copy its cells into **Kaggle** with Internet and GPU enabled. Change `REPO_URL` to your new public GitHub repo. The notebook clones the project into the **remote ephemeral notebook filesystem**; the Mac stores no model weights. Use the provided cloud script or run directly:
