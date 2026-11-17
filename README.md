@@ -29,7 +29,7 @@ Deterministic safety screen ──── blocked ────▶ Refuse (no tool
      │ allowed
      ▼
 0.5B router
-     ├── retrieve ──▶ search local documents ──▶ writer ──▶ citation verifier
+     ├── retrieve ──▶ local docs ──▶ writer ──▶ verifier
      ├── calculate ─▶ safe calculator
      ├── clock ─────▶ UTC clock
      └── answer / clarify / refuse ──▶ reply
