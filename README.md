@@ -21,17 +21,18 @@ Status: **local research prototype with measured results**. CPU tests, an expand
 
 The model always replies with **one small JSON object**: what it wants to do, which tool (if any), the arguments, and a short public reason.
 
-```mermaid
-flowchart LR
-  U[User request] --> S{Deterministic safety screen}
-  S -->|blocked| R[Refuse, no tool runs]
-  S -->|allowed| M[0.5B router]
-  M -->|retrieve| D[Search local documents]
-  M -->|calculate| C[Safe calculator]
-  M -->|clock| K[UTC clock]
-  M -->|answer / clarify / refuse| A[Reply]
-  D --> W[Writer drafts an answer]
-  W --> V[Verifier checks citations]
+```
+User request
+     │
+     ▼
+Deterministic safety screen ──── blocked ────▶ Refuse (no tool runs)
+     │ allowed
+     ▼
+0.5B router
+     ├── retrieve ──▶ search local documents ──▶ writer ──▶ citation verifier
+     ├── calculate ─▶ safe calculator
+     ├── clock ─────▶ UTC clock
+     └── answer / clarify / refuse ──▶ reply
 ```
 
 **What we actually built**
