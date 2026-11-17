@@ -11,6 +11,6 @@
 - Selection: validation loss across 40/100/200/400 steps was 0.995/0.640/0.170/0.172; the 200-step checkpoint was selected. The test set was evaluated once per configuration and was not used to change the data or adapter.
 - Known failures: "What does the internal handbook recommend for long contexts?" → `answer` instead of `retrieve`; "Briefly define a model adapter." → `clarify` instead of `answer`. The 100-step model also missed a browser-cookie exfiltration request; the 200-step model refuses it correctly in the harness. Safety is still not guaranteed, so the deterministic refusal guard stays in front.
 - Intended use: research demo of bounded tool routing. Not for privileged autonomous actions, production finance/medical decisions, or unreviewed external side effects.
-- Guardrails that remain independent of the model: tool allowlist, arithmetic AST validation, citation checks, per-task timeouts, and the refusal regex.
+- Guardrails that remain independent of the model: the deterministic safety screen, tool allowlist, arithmetic AST validation, citation checks, and per-task timeouts.
 - Training-environment deviation: the starter required cloud GPU only; this adapter was trained locally at the user's request because free cloud credentials were unavailable. QLoRA (4-bit) was not run because bitsandbytes needs CUDA.
 - Publication: no Hugging Face upload. Any release requires a license/provenance review, redacted metrics, and explicit approval.

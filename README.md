@@ -6,7 +6,7 @@ Status: **local research prototype with measured results**. CPU tests, an expand
 
 ## Why this is useful
 
-The student model learns to choose **one safe next action** rather than trying to become another all-purpose chatbot. Its six allowable actions are `retrieve`, `calculate`, `clock`, `answer`, `clarify`, and `refuse`; only `retrieve/search_docs`, `calculate/calculator`, and `clock/clock_utc` have executable tools. This narrow, measurable decision task makes a realistic small-model experiment. It can be embedded as the routing component of larger agent systems if evaluation confirms acceptable accuracy.
+The student model learns to choose **one safe next action** rather than trying to become another all-purpose chatbot. Its six allowable actions are `retrieve`, `calculate`, `clock`, `answer`, `clarify`, and `refuse`; only `retrieve/search_docs`, `calculate/calculator`, and `clock/clock_utc` have executable tools. A deterministic safety screen runs before any tool call, so a routing miss cannot turn a credential-exfiltration or destructive request into a retrieval call. This narrow, measurable decision task makes a realistic small-model experiment. It can be embedded as the routing component of larger agent systems if evaluation confirms acceptable accuracy.
 
 | Layer | Open tool | Where it runs | Cost rule |
 |---|---|---|---|

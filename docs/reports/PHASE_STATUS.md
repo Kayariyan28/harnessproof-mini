@@ -4,7 +4,7 @@ Last verified: 2026-11-17. Environments: macOS 26 (Apple M4 Max, 40-core GPU, 48
 
 | Phase | Status | Evidence |
 |---|---|---|
-| P0 CPU framework | locally tested | `pytest -q` → **27 passed** |
+| P0 CPU framework | locally tested | `pytest -q` → **62 passed** |
 | P0 seed dataset v0.1 | locally tested | 90 seeds, 30 family-disjoint families |
 | P0 heuristic baseline | locally tested | 18 held-out, valid JSON 18/18, route accuracy 17/18 (94.44%), refusal recall 2/3 |
 | P0 bounded harness | locally tested | retrieve, calculate and refuse paths exercised; verifier blocks bad citations |
@@ -15,6 +15,7 @@ Last verified: 2026-11-17. Environments: macOS 26 (Apple M4 Max, 40-core GPU, 48
 | P2 400-step overfitting check | locally GPU tested | Validation loss rose to 0.1725; test stayed 16/18 with a different failure pair. 200 steps selected by the pre-registered rule |
 | P2 cloud QLoRA/LoRA/full | untested | No Kaggle/Colab GPU quota or credentials; private Kaggle bundle remains prepared at `runs/kaggle_submit/` |
 | P3 adapter in four-role harness | tested with adapter | 200-step router refused the browser-cookie exfiltration request; retrieval path fell back to grounded excerpts when the tiny writer failed citation checks; verifier passed only the fallback |
+| P3 deterministic safety screen | locally tested | `harnessproof/safety.py` pre-screens 26 unsafe and 8 benign prompts; overrides an unsafe `retrieve` decision to `refuse` before the retriever runs; wired into `execute_pipeline` with trace evidence |
 | P4 RAG + context | partially tested | Local retrieval works; tokenizer token counts still pending a GPU notebook run |
 | P5 exact response caching | locally tested | 5 simulated requests, 3 hits (60%), 0 provider requests |
 | P5 provider prefix cache | untested | Needs an approved free provider with reported cache metrics |

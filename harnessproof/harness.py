@@ -4,6 +4,7 @@ import datetime
 from pathlib import Path
 from .contracts import parse_decision, validate_decision, validate_expression
 from .retrieval import Retriever
+from .safety import screen_request
 
 
 def safe_calculate(expression):
@@ -46,6 +47,11 @@ def compact_context(text,max_chars=2400):
 def execute_pipeline(request,decision,knowledge_dir='docs/knowledge',writer=None, max_context_chars=2400):
     d=validate_decision(decision) if isinstance(decision,dict) else parse_decision(decision)
     trace=[{'agent':'router','action':d['action'],'tool':d['tool'],'context_strategy':d['context_strategy']}]
+    blocked=screen_request(request)
+    if blocked:
+        if d['action']!='refuse':
+            trace.append({'agent':'safety_screen','category':blocked,'overrode':d['action']})
+        d={'action':'refuse','tool':'none','arguments':{},'context_strategy':'none','reason':'Blocked by deterministic safety screen.'}
     sources=[]
     action=d['action']
     if action=='calculate':
