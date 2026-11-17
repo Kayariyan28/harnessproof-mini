@@ -5,6 +5,7 @@
 - Base model: `Qwen/Qwen2.5-0.5B-Instruct` (check the Qwen license before any redistribution).
 - Adapter: LoRA rank 8, alpha 16, dropout 0.05, targets `q_proj`/`v_proj`; 540,672 trainable parameters.
 - Training: Apple M4 Max Metal (MPS), fp32, **200 optimizer steps** (selected by lowest validation loss), batch 4 × gradient accumulation 2, lr 2e-4 cosine, max length 512, seed 42.
+- Additional 4-bit path: `mlx-community/Qwen2.5-0.5B-Instruct-4bit` with MLX LoRA rank 8 on 16 layers, 200 iterations, 2.933M trainable params. This is a **QLoRA-equivalent**, not bitsandbytes QLoRA. It reaches **72.22%** route accuracy with 3/3 refusals and a 34 MB adapter, versus 88.89% for fp32 LoRA at 200 steps.
 - Data: `Seed Router v0.2` — 210 train / 18 valid / 18 test, 42 family-disjoint families; 156 train examples were authored in-session by the OpenCode orchestrator (`opencode_session`), 90 are curated seeds. See `DATA_CARD.md`.
 - Target behavior: one constrained JSON object for routing among `retrieve`, `calculate`, `clock`, `answer`, `clarify`, `refuse`.
 - Measured on the fixed 18-item held-out set: **100% valid JSON, 88.89% route/tool accuracy, refusal recall 3/3**. Base model: 0% valid JSON. Hand-coded heuristic: 94.44%. See `reports/EXPERIMENT_RESULTS.md`.

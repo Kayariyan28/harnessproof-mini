@@ -13,7 +13,8 @@ Last verified: 2026-11-17. Environments: macOS 26 (Apple M4 Max, 40-core GPU, 48
 | P1 human audit | **not done** | No independent reviewer; dataset is not release-grade despite passing numeric gates |
 | P2 local LoRA (Apple MPS) | **locally GPU tested** | 4 configs at 40/100/200/400 steps; validation loss 0.995/0.640/**0.170**/0.172 selects 200 steps. Train loss 0.365, 433 s train / 505 s wall, 9.59 GB peak, 540,672 trainable params. Base 0% → tuned **100% valid JSON, 88.89% route accuracy, 3/3 refusal recall** |
 | P2 400-step overfitting check | locally GPU tested | Validation loss rose to 0.1725; test stayed 16/18 with a different failure pair. 200 steps selected by the pre-registered rule |
-| P2 cloud QLoRA/LoRA/full | untested | No Kaggle/Colab GPU quota or credentials; private Kaggle bundle remains prepared at `runs/kaggle_submit/` |
+| P2 4-bit MLX QLoRA-equivalent | locally GPU tested | MLX 0.32.4, 4-bit frozen Qwen2.5-0.5B, 2.933M LoRA params, 200 iters, val loss 3.380→0.368, base 11.11% → tuned **72.22%** route, 3/3 refusals, adapter 34 MB, eval peak 0.678 GB. Not bitsandbytes |
+| P2 cloud QLoRA/LoRA/full | **blocked (account)** | Kaggle/Colab/Paperspace/Lightning all require a signed-in account; no GPU is anonymous. Kaggle and Colab tabs opened but not authenticated; HF Jobs needs Pro/credits; bundle remains at `runs/kaggle_submit/` |
 | P3 adapter in four-role harness | tested with adapter | 200-step router refused the browser-cookie exfiltration request; retrieval path fell back to grounded excerpts when the tiny writer failed citation checks; verifier passed only the fallback |
 | P3 deterministic safety screen | locally tested | `harnessproof/safety.py` pre-screens 26 unsafe and 8 benign prompts; overrides an unsafe `retrieve` decision to `refuse` before the retriever runs; wired into `execute_pipeline` with trace evidence |
 | P4 RAG + context | partially tested | Local retrieval works; tokenizer token counts still pending a GPU notebook run |
@@ -28,10 +29,11 @@ Last verified: 2026-11-17. Environments: macOS 26 (Apple M4 Max, 40-core GPU, 48
 - Checkpoint selection used validation loss only, with the rule fixed before the 400-step run. The test set was evaluated once per configuration; no adapter or data change was made in response to test errors. Because four configurations share the same 18-item test, 88.9% is an optimistic point estimate.
 - The 0.5B student now refuses the browser-cookie exfiltration case, but routing safety is learned, not guaranteed; the deterministic refusal guard stays in front of it.
 - Training moved from cloud to the local Mac at the user's explicit request. That is a deviation from the starter's cloud-only rule and is recorded in the model card.
+- The MLX run is a 4-bit frozen base plus LoRA (QLoRA-equivalent), **not** bitsandbytes QLoRA, and must not be described as a cloud QLoRA result.
 
 ## Blockers / next
 
 1. **Human review** of the 12 new families, especially refusal and clarify boundaries, before any release claim.
 2. **Cloud QLoRA** remains untested; `runs/kaggle_submit/` is ready once Kaggle OAuth and a GPU allocation exist.
-3. **QLoRA locally is impossible** (bitsandbytes needs CUDA); do not try to force it on MPS.
+3. **bitsandbytes QLoRA remains CUDA-only.** Use the MLX 4-bit path locally and label it as a QLoRA-equivalent; it is not the same kernel or the same result.
 4. **No adapter publication.** A Hugging Face release needs license review and explicit approval.

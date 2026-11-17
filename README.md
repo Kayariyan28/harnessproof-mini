@@ -2,7 +2,7 @@
 
 **OpenCode/DeepSeek-guided research on small fine-tuned AI tool routers, synthetic dataset quality, RAG, multi-role agents, prompt caching, and honest evaluation.**
 
-Status: **local research prototype with measured results**. CPU tests, an expanded 210-example training set and a local Apple-Silicon LoRA adapter have run: the tuned 0.5B router reaches **88.9% held-out routing** (100% valid JSON, 3/3 refusals) versus **94.4%** for the hand-coded heuristic, and the base model scores 0% valid JSON. Cloud QLoRA and paid teacher expansion have **not** run. Do not describe this as a production or validated general model.
+Status: **local research prototype with measured results**. CPU tests, an expanded 210-example training set and two local Apple-Silicon adapters have run: fp32 LoRA reaches **88.9% held-out routing** (100% valid JSON, 3/3 refusals), the 4-bit MLX QLoRA-equivalent reaches **72.2%**, and the best hand-coded heuristic reaches **94.4%**. Base models score 0–11%. Cloud QLoRA and paid teacher expansion have **not** run. Do not describe this as a production or validated general model.
 
 ## Why this is useful
 
@@ -14,12 +14,36 @@ The student model learns to choose **one safe next action** rather than trying t
 | Code/CI | Python, pytest, GitHub Actions | Browser-hosted Codespaces + GitHub | Free personal quotas |
 | Cloud training | [TRL](https://huggingface.co/docs/trl/), Transformers, PEFT, bitsandbytes | [Colab Free](https://colab.research.google.com/) or [Kaggle](https://www.kaggle.com/code) GPU | Free accelerator if allocated |
 | Local training (workaround) | TRL, Transformers, PEFT on Metal/MPS | Apple Silicon Mac | No cash; ~1 GB model download, fp32 LoRA only |
-| Student | `Qwen/Qwen2.5-0.5B-Instruct` | Cloud GPU only | Open-weight base; check base license |
+| Local 4-bit training | MLX + 4-bit Qwen2.5-0.5B | Apple Silicon Mac | No cash, no account; QLoRA-equivalent, not bitsandbytes |
+| Student | `Qwen/Qwen2.5-0.5B-Instruct` | Cloud GPU or Apple Silicon | Open-weight base; check base license |
 | RAG/tools | Lightweight Python package in this repo | Codespaces CPU or cloud GPU | No inference bill for heuristic path |
 | Caching | SQLite response cache; optional provider prefix cache | Codespaces CPU | Provider test opt-in |
 | Publication | GitHub source; optional Hugging Face adapter | Cloud | No base-weight upload to GitHub |
 
 **Zero cash spend is an experiment constraint, not a service-level guarantee.** Free GPUs are limited/unavailable at times. Codespaces consumes a monthly quota. DeepSeek's official API is not assumed free. OpenRouter's `:free` selection is rate-limited and may change. No paid fallback is enabled.
+
+## Objective and measured outcome
+
+**Question:** can a 0.5B open model learn a narrow, safe tool-routing contract from about 200 synthetic examples, and does it beat a transparent hand-coded heuristic?
+
+**Setup:** family-disjoint 210 train / 18 validation / 18 test; six balanced actions; validation-loss checkpoint selection; one fixed test set; same prompts and parser for every method. All numbers below are measured, not projected.
+
+| Router (held-out test, 18 items) | Valid JSON | Route accuracy | Refusal recall |
+|---|---:|---:|---:|
+| Hand-coded heuristic | 100% | **94.4%** | 2/3 |
+| Base Qwen2.5-0.5B, fp32 | 0% | 0% | 0/3 |
+| Base Qwen2.5-0.5B, 4-bit | 16.7% | 11.1% | 0/3 |
+| LoRA fp32, 200 steps (MPS) | 100% | 88.9% | 3/3 |
+| 4-bit QLoRA-equivalent, 200 iters (MLX) | 100% | 72.2% | 3/3 |
+
+**What this shows**
+
+- Fine-tuning reliably teaches the JSON contract: base models fail it, tuned models hit 100% valid JSON.
+- The 0.5B student gets close to but does **not** beat the heuristic at this scale. 18 items means one item is 5.6 points; none of these gaps is statistically meaningful.
+- 4-bit MLX is the only zero-account 4-bit path here. It is a QLoRA-equivalent (4-bit base + LoRA), **not** bitsandbytes QLoRA, and trails fp32 LoRA at equal iterations.
+- Safety remains layered: a deterministic pre-screen blocks credential and destructive patterns before any tool call, independent of model accuracy.
+
+**What it does not show:** production readiness, general tool-routing ability, or that synthetic self-authored data is release-grade. Human audit is still missing. Details and failures: [experiment results](docs/reports/EXPERIMENT_RESULTS.md), [phase status](docs/reports/PHASE_STATUS.md), [model card](docs/MODEL_CARD.md), [data card](docs/DATA_CARD.md).
 
 ## Browser-only start: GitHub Codespaces + OpenCode
 
