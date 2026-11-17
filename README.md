@@ -4,9 +4,59 @@
 
 Status: **local research prototype with measured results**. CPU tests, an expanded 210-example training set and two local Apple-Silicon adapters have run: fp32 LoRA reaches **88.9% held-out routing** (100% valid JSON, 3/3 refusals), the 4-bit MLX QLoRA-equivalent reaches **83.3%**, and the best hand-coded heuristic reaches **94.4%**. Base models score 0–11%. Cloud QLoRA and paid teacher expansion have **not** run. Do not describe this as a production or validated general model.
 
-## Why this is useful
+## About this project, in plain terms
 
-The student model learns to choose **one safe next action** rather than trying to become another all-purpose chatbot. Its six allowable actions are `retrieve`, `calculate`, `clock`, `answer`, `clarify`, and `refuse`; only `retrieve/search_docs`, `calculate/calculator`, and `clock/clock_utc` have executable tools. A deterministic safety screen runs before any tool call, so a routing miss cannot turn a credential-exfiltration or destructive request into a retrieval call. This narrow, measurable decision task makes a realistic small-model experiment. It can be embedded as the routing component of larger agent systems if evaluation confirms acceptable accuracy.
+**The problem.** A large AI model can do almost anything, but it is expensive and hard to control. Most real systems do not need a genius in every step. They need a cheap, predictable **dispatcher** that looks at a request and decides what should happen next: look something up, do the math, check the time, answer directly, ask for missing details, or refuse because the request is unsafe.
+
+**The analogy.** Think of a receptionist at a small office. The receptionist does not solve every problem personally. They route each visitor to the right desk, and they are allowed to say "I need more information" or "I can't help with that." That is exactly the job this project gives a 0.5-billion-parameter language model.
+
+| If the request… | The router decides… | Tool it may use |
+|---|---|---|
+| needs our own reference documents | look it up | `search_docs` |
+| contains arithmetic | calculate it | `calculator` |
+| asks for the current time | check the clock | `clock_utc` |
+| asks for stable general knowledge | answer directly | none |
+| is missing a document, number or target | ask a clarifying question | none |
+| asks for secrets, destructive commands or forbidden access | refuse | none |
+
+The model always replies with **one small JSON object**: what it wants to do, which tool (if any), the arguments, and a short public reason.
+
+```mermaid
+flowchart LR
+  U[User request] --> S{Deterministic safety screen}
+  S -->|blocked| R[Refuse, no tool runs]
+  S -->|allowed| M[0.5B router]
+  M -->|retrieve| D[Search local documents]
+  M -->|calculate| C[Safe calculator]
+  M -->|clock| K[UTC clock]
+  M -->|answer / clarify / refuse| A[Reply]
+  D --> W[Writer drafts an answer]
+  W --> V[Verifier checks citations]
+```
+
+**What we actually built**
+
+1. **A small teaching set.** 210 training examples, 18 validation examples and 18 test examples, written as request → correct decision. The test families never appear in training, so the score is not memorisation.
+2. **A student model.** Qwen2.5-0.5B is taught with LoRA on a Mac. One path uses normal 32-bit weights; the other uses a 4-bit compressed base with MLX, the closest free substitute for QLoRA because bitsandbytes needs an NVIDIA GPU.
+3. **A guard-railed harness.** Routing is only one role. Separate functions retrieve evidence, execute the chosen tool, draft an answer, and verify that the answer cites real sources. A tiny model is not trusted to police itself.
+4. **A bouncer in front.** A fixed, non-learned safety screen blocks credential theft and destructive commands before the model can route them to a tool. It does not depend on the model being smart that day.
+5. **An honest scoreboard.** Base model, trained model and hand-written rules all answer the same 18 held-out questions, and every failure is published.
+
+**What we found, without the jargon**
+
+- The untrained model does not follow the format at all — it writes prose instead of JSON.
+- After training it follows the format **100% of the time** and gets **83–89%** of routing decisions right.
+- A simple hand-written rule set still wins on this small test (**94.4%**). That is a useful result, not a failure to hide: it tells us the task is still easy enough for rules and that 210 examples are not enough to prove a model advantage.
+- The trained model still makes real mistakes, including confusing "look it up" with "answer directly" and "ask a question" with "refuse".
+- The verifier caught the tiny model inventing citations, and the harness replaced the bad answer with quoted evidence instead of shipping a confident lie.
+
+**What this is not.** It is not a chatbot, not a general assistant, not a production safety system, and not evidence that small models beat rules. It is a small, reproducible study of one narrow component, with the failures left visible.
+
+**Why bother.** The pattern — narrow task, fixed output, real tools, deterministic guardrails, family-disjoint test, published failures — is reusable for any agent that must make a bounded decision. Everything here runs on one Mac with no paid API and no cloud account.
+
+## Technology stack and cost boundaries
+
+Everything used here is free or already owned: no paid API, no cloud GPU account, and no base weights in git. The table below shows where each part runs.
 
 | Layer | Open tool | Where it runs | Cost rule |
 |---|---|---|---|
