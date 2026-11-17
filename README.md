@@ -75,6 +75,23 @@ kaggle kernels output YOUR_KAGGLE_USERNAME/harnessproof-mini-lab \
 
 The preparation step is offline; `kaggle kernels push` makes the real remote GPU submission and must be authorized. The generated Kaggle notebook is private by default. The source repo must be public so Kaggle can clone it without secrets. The Kaggle account and API/GPU/internet permissions may still require manual browser setup; do not claim end-to-end automation was verified until real results return. See [Kaggle automation runbook](docs/KAGGLE_AUTOMATION.md).
 
+## Local Apple Silicon workaround (no cloud GPU)
+
+If free cloud GPU is unavailable, the same LoRA path can run on an Apple Silicon Mac with Metal (MPS). This deviates from the starter's cloud-only rule at the user's request: it downloads the ~1 GB base model into the local Hugging Face cache. QLoRA/4-bit is **not** possible locally because bitsandbytes needs CUDA; use fp32 LoRA.
+
+```bash
+uv venv --python 3.11 .venv-train
+uv pip install --python .venv-train/bin/python -r requirements-local-mps.txt
+.venv-train/bin/python -m scripts.cloud_train --mode lora --device mps \
+  --steps 100 --batch-size 4 --gradient-accumulation 2 --eval-max 18 \
+  --output-dir runs/local/lora100
+.venv-train/bin/python -m scripts.cloud_harness --device mps \
+  --adapter-path runs/local/lora100/adapter \
+  --request "Find the prompt caching documentation"
+```
+
+Measured results are recorded in [Experiment results](docs/reports/EXPERIMENT_RESULTS.md). The adapter and model cache stay in `runs/` / the Hugging Face cache and are git-ignored; never commit weights.
+
 ## Browser GPU stage: train QLoRA, LoRA, optional full
 
 Open [`notebooks/cloud_gpu_lab.ipynb`](notebooks/cloud_gpu_lab.ipynb) in **Google Colab**, or copy its cells into **Kaggle** with Internet and GPU enabled. Change `REPO_URL` to your new public GitHub repo. The notebook clones the project into the **remote ephemeral notebook filesystem**; the Mac stores no model weights. Use the provided cloud script or run directly:

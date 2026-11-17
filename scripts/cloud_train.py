@@ -27,6 +27,8 @@ def parse_args(argv=None):
     ap.add_argument('--eval-max', type=int, default=18)
     ap.add_argument('--rank', type=int, default=8)
     ap.add_argument('--seed', type=int, default=42)
+    ap.add_argument('--device', choices=['auto', 'cuda', 'mps', 'cpu'], default='auto',
+                    help='auto prefers CUDA, then Apple MPS, then CPU. QLoRA requires CUDA.')
     ap.add_argument('--skip-training', action='store_true', help='Evaluate pretrained baseline only.')
     args=ap.parse_args(argv)
     if args.steps < 1 or args.steps > 1000:
@@ -85,10 +87,26 @@ def main(argv=None):
         from trl import SFTConfig, SFTTrainer
     except ImportError as exc:
         raise SystemExit('Missing cloud training requirements. Run: pip install -r requirements-cloud.txt') from exc
-    if not torch.cuda.is_available():
-        raise SystemExit('A CUDA GPU is required. Enable free T4/P100 in Colab/Kaggle; do not train in Codespaces.')
-    dtype=torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
-    device='cuda:0'
+    if not torch.cuda.is_available() and args.device == 'cuda':
+        raise SystemExit('CUDA requested but unavailable.')
+    if args.device == 'cuda' and not torch.cuda.is_available():
+        raise SystemExit('A CUDA GPU is required for --device cuda.')
+    if args.device == 'auto':
+        device = 'cuda' if torch.cuda.is_available() else ('mps' if torch.backends.mps.is_available() else 'cpu')
+    else:
+        device = args.device
+    if device == 'cuda' and not torch.cuda.is_available():
+        raise SystemExit('A CUDA GPU is required. Enable free T4/P100 or use --device mps on Apple Silicon.')
+    if device == 'mps' and not torch.backends.mps.is_available():
+        raise SystemExit('MPS requested but Apple Metal is unavailable.')
+    if args.mode == 'qlora' and device != 'cuda':
+        raise SystemExit('QLoRA 4-bit needs CUDA/bitsandbytes. Use --device mps --mode lora locally.')
+    if device == 'cuda':
+        dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+    elif device == 'mps':
+        dtype = torch.float32  # MPS mixed precision is provider-dependent; fp32 is the stable path.
+    else:
+        dtype = torch.float32
     set_seed(args.seed)
     work=Path(args.output_dir or f'runs/cloud/{args.mode}')
     work.mkdir(parents=True,exist_ok=True)
@@ -99,7 +117,9 @@ def main(argv=None):
     if not gold: raise ValueError('The test set must not be empty')
     tokenizer=AutoTokenizer.from_pretrained(args.model)
     if tokenizer.pad_token is None:tokenizer.pad_token=tokenizer.eos_token
-    kwargs={'dtype':dtype,'low_cpu_mem_usage':True}
+    kwargs={'dtype':dtype}
+    if device=='cuda':
+        kwargs['low_cpu_mem_usage']=True
     if args.mode=='qlora':
         kwargs['quantization_config']=BitsAndBytesConfig(load_in_4bit=True,bnb_4bit_quant_type='nf4',bnb_4bit_use_double_quant=True,bnb_4bit_compute_dtype=dtype)
         kwargs['device_map']={'':0}
@@ -113,9 +133,13 @@ def main(argv=None):
              'train_sha256':file_hash(Path(args.data_dir)/'train.jsonl'),
              'valid_sha256':file_hash(Path(args.data_dir)/'valid.jsonl'),
              'test_sha256':file_hash(gold_file),
-             'gpu':torch.cuda.get_device_name(0),'gpu_count_available':torch.cuda.device_count(),
+             'device':device,
+             'gpu':torch.cuda.get_device_name(0) if device=='cuda' else ('Apple MPS (unified memory)' if device=='mps' else platform.processor()),
+             'gpu_count_available':torch.cuda.device_count(),
              'precision':str(dtype),'python':platform.python_version(), 'torch':torch.__version__,
              'baseline':baseline['metrics']}
+    import transformers as _transformers, trl as _trl, peft as _peft, datasets as _datasets
+    metrics['package_versions']={'transformers':_transformers.__version__,'trl':_trl.__version__,'peft':_peft.__version__,'datasets':_datasets.__version__}
     if not args.skip_training:
         peft=None
         if args.mode!='full':
@@ -125,9 +149,9 @@ def main(argv=None):
             per_device_train_batch_size=args.batch_size,per_device_eval_batch_size=1,
             gradient_accumulation_steps=args.gradient_accumulation,
             learning_rate=1e-5 if args.mode=='full' else 2e-4,
-            lr_scheduler_type='cosine',warmup_ratio=0.05,
+            lr_scheduler_type='cosine',warmup_steps=max(1,int(args.steps*0.05)),
             max_length=args.max_length,completion_only_loss=True,
-            fp16=(dtype==torch.float16),bf16=(dtype==torch.bfloat16),
+            fp16=(device=='cuda' and dtype==torch.float16),bf16=(device=='cuda' and dtype==torch.bfloat16),
             gradient_checkpointing=True,gradient_checkpointing_kwargs={'use_reentrant':False},
             save_strategy='no',eval_strategy='no',
             logging_steps=10,report_to='none',seed=args.seed,
@@ -151,7 +175,10 @@ def main(argv=None):
         tuned=judge_predictions(trainer.model,tokenizer,gold,device,max_items=args.eval_max)
         (work/'tuned.json').write_text(json.dumps(tuned,indent=2,ensure_ascii=False)+'\n')
         metrics['tuned']=tuned['metrics']
-    metrics['max_cuda_memory_gb']=round(torch.cuda.max_memory_allocated(0)/1024**3,3)
+    if device=='cuda':
+        metrics['max_cuda_memory_gb']=round(torch.cuda.max_memory_allocated(0)/1024**3,3)
+    elif device=='mps' and hasattr(torch,'mps'):
+        metrics['max_mps_memory_gb']=round(torch.mps.driver_allocated_memory()/1024**3,3)
     metrics['wall_time_s']=round(time.monotonic()-start,2)
     (work/'summary.json').write_text(json.dumps(metrics,indent=2,ensure_ascii=False)+'\n')
     print(json.dumps(metrics,indent=2,ensure_ascii=False))

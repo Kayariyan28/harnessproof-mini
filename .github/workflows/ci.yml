@@ -17,5 +17,6 @@ jobs:
       - run: python -m pytest -q
       - run: python -m harnessproof.cli build-data
       - run: python -m scripts.quality_gate --mode pilot
+      - run: python -m scripts.quality_gate --mode publish
       - run: python -m harnessproof.cli evaluate --backend heuristic --out runs/heuristic.json
       - run: python -m compileall -q harnessproof scripts

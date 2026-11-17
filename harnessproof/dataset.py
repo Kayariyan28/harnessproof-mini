@@ -44,7 +44,7 @@ def decision_from_seed(seed):
     decision={'action':seed['action'], 'tool':TOOLS[seed['action']], 'arguments':seed.get('arguments',{}), 'context_strategy':seed.get('context_strategy','retrieve' if seed['action']=='retrieve' else 'none'), 'reason':seed['reason']}
     return validate_decision(decision)
 
-def build_dataset(seed_path, out_dir, variants_path=None):
+def build_dataset(seed_path, out_dir, variants_path=None, train_extra_path=None):
     rows=list(read_jsonl(seed_path));seen_ids=set();families={}
     for seed in rows:
         for key in ('id','family','split','prompt','action','reason','taxonomy'):
@@ -56,6 +56,17 @@ def build_dataset(seed_path, out_dir, variants_path=None):
             raise ValueError('Family contamination across splits')
         families[seed['family']]=seed['split']
         decision_from_seed(seed)
+    extra=[]
+    if train_extra_path and Path(train_extra_path).exists():
+        for row in read_jsonl(train_extra_path):
+            for key in ('id','family','split','prompt','action','reason','taxonomy'):
+                if key not in row: raise ValueError(f'Missing {key} in train extra')
+            if row['split']!='train': raise ValueError('Extra families are train-only')
+            if row['id'] in seen_ids: raise ValueError('Duplicate ID')
+            seen_ids.add(row['id'])
+            if row['family'] in families: raise ValueError('Extra family must be disjoint from seed families')
+            decision_from_seed(row)
+            extra.append(row)
     variants=defaultdict(list)
     if variants_path and Path(variants_path).exists():
         for r in read_jsonl(variants_path):
@@ -75,9 +86,15 @@ def build_dataset(seed_path, out_dir, variants_path=None):
             splits[seed['split']].append(ex)
             metadata[seed['split']].append({'id':seed['id'],'family':seed['family'],'action':seed['action'],'tool':TOOLS[seed['action']],'prompt':prompt,'taxonomy':seed['taxonomy'],'provenance':provenance})
     out=Path(out_dir);out.mkdir(parents=True,exist_ok=True)
+    for row in extra:
+        key=signature(row['prompt'])
+        if key in global_seen: raise ValueError('Duplicate prompt in train extra')
+        global_seen.add(key)
+        splits['train'].append({'prompt':make_prompt(row['prompt']),'completion':json.dumps(decision_from_seed(row),sort_keys=True,separators=(',',':'))})
+        metadata['train'].append({'id':row['id'],'family':row['family'],'action':row['action'],'tool':TOOLS[row['action']],'prompt':row['prompt'],'taxonomy':row['taxonomy'],'provenance':'opencode_session'})
     for split in ('train','valid','test'):
         write_jsonl(out/f'{split}.jsonl',splits[split]);write_jsonl(out/f'{split}.meta.jsonl',metadata[split])
     summary={key:len(splits[key]) for key in ('train','valid','test')}
-    summary.update({'rejected_variants':rejected,'provenance':dict(Counter(row['provenance'] for group in metadata.values() for row in group)),'split_strategy':'family_holdout'})
+    summary.update({'rejected_variants':rejected,'train_extra':len(extra),'provenance':dict(Counter(row['provenance'] for group in metadata.values() for row in group)),'split_strategy':'family_holdout'})
     (out/'manifest.json').write_text(json.dumps(summary,indent=2)+'\n')
     return summary

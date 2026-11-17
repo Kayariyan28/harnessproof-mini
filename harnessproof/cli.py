@@ -43,7 +43,7 @@ def route_one(request,args,client=None):
 def main(argv=None):
     p=argparse.ArgumentParser(description='HarnessProof Mini experiments')
     sub=p.add_subparsers(dest='cmd',required=True)
-    d=sub.add_parser('build-data');d.add_argument('--seeds',default='data/seed_scenarios.jsonl');d.add_argument('--variants',default=None);d.add_argument('--out',default='data/processed')
+    d=sub.add_parser('build-data');d.add_argument('--seeds',default='data/seed_scenarios.jsonl');d.add_argument('--variants',default=None);d.add_argument('--train-extra',default='data/train_extra.jsonl');d.add_argument('--out',default='data/processed')
     a=sub.add_parser('augment');a.add_argument('--model',required=True,help='Exact provider/model from opencode models');a.add_argument('--max-seeds',type=int,default=12);a.add_argument('--variants-per-seed',type=int,default=2);a.add_argument('--out',default='data/teacher_variants.jsonl');a.add_argument('--confirmed-zero-cost',action='store_true',help='Explicitly acknowledge verified zero-charge teacher model route and remaining free quota')
     for cmd in ('run','evaluate'):
         x=sub.add_parser(cmd)
@@ -55,7 +55,7 @@ def main(argv=None):
         if cmd=='run': x.add_argument('request');x.add_argument('--knowledge-dir',default='docs/knowledge')
         else:x.add_argument('--gold',default='data/processed/test.meta.jsonl');x.add_argument('--out',default='runs/eval.json')
     args=p.parse_args(argv)
-    if args.cmd=='build-data':print(json.dumps(build_dataset(args.seeds,args.out,args.variants),indent=2));return 0
+    if args.cmd=='build-data':print(json.dumps(build_dataset(args.seeds,args.out,args.variants,args.train_extra),indent=2));return 0
     if args.cmd=='augment':
         if not args.confirmed_zero_cost:
             p.error('Teacher API calls disabled: verify the exact provider route costs $0, then pass --confirmed-zero-cost')
