@@ -37,7 +37,7 @@
   },
   "selection_rule": "lowest validation loss; rule fixed before the 400-step run",
   "selected": "lora200",
-  "caveat": "18-item test; four configurations compared on it; treat 88.89% as an optimistic point estimate. No human audit of the dataset.",
+  "caveat": "18-item test; four configurations compared on it; treat 88.89% as an optimistic point estimate. No human audit of the dataset. MLX 4-bit results are QLoRA-equivalent only.",
   "runs": {
     "lora40": {
       "steps": 40,
@@ -195,5 +195,45 @@
         }
       }
     }
-  }
+  },
+  "mlx_4bit": {
+    "runtime": "MLX 0.32.4 / mlx-lm 0.32.2 on Apple M4 Max",
+    "base_model": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+    "method": "4-bit frozen base + LoRA rank 8 on 16 layers (QLoRA-equivalent, not bitsandbytes)",
+    "trainable_parameters": "2.933M (0.594%)",
+    "hyperparameters": {
+      "batch_size": 4,
+      "learning_rate": 0.0002,
+      "max_seq_length": 512,
+      "mask_prompt": true,
+      "seed": 42
+    },
+    "selection_rule": "lowest validation loss; local budget capped at 400 iterations",
+    "runs": {
+      "base": {
+        "valid_json_rate": 0.1667,
+        "route_accuracy": 0.1111,
+        "refusal_recall": 0.0,
+        "wall_time_s": 3.98,
+        "peak_memory_gb": 0.582
+      },
+      "iters200": {
+        "validation_loss": 0.368,
+        "valid_json_rate": 1.0,
+        "route_accuracy": 0.7222,
+        "refusal_recall": 1.0
+      },
+      "iters400": {
+        "validation_loss": 0.165,
+        "valid_json_rate": 1.0,
+        "route_accuracy": 0.8333,
+        "refusal_recall": 1.0,
+        "wall_time_s": 4.01,
+        "peak_memory_gb": 0.656,
+        "adapter_mb": 34
+      }
+    },
+    "caveat": "Validation loss was still falling at 400; not converged. 18-item test shared with other configurations. 4-bit path is an access workaround, not an accuracy win."
+  },
+  "mlx_4bit_selected": "iters400"
 }

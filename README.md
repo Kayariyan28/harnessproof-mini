@@ -2,7 +2,7 @@
 
 **OpenCode/DeepSeek-guided research on small fine-tuned AI tool routers, synthetic dataset quality, RAG, multi-role agents, prompt caching, and honest evaluation.**
 
-Status: **local research prototype with measured results**. CPU tests, an expanded 210-example training set and two local Apple-Silicon adapters have run: fp32 LoRA reaches **88.9% held-out routing** (100% valid JSON, 3/3 refusals), the 4-bit MLX QLoRA-equivalent reaches **72.2%**, and the best hand-coded heuristic reaches **94.4%**. Base models score 0–11%. Cloud QLoRA and paid teacher expansion have **not** run. Do not describe this as a production or validated general model.
+Status: **local research prototype with measured results**. CPU tests, an expanded 210-example training set and two local Apple-Silicon adapters have run: fp32 LoRA reaches **88.9% held-out routing** (100% valid JSON, 3/3 refusals), the 4-bit MLX QLoRA-equivalent reaches **83.3%**, and the best hand-coded heuristic reaches **94.4%**. Base models score 0–11%. Cloud QLoRA and paid teacher expansion have **not** run. Do not describe this as a production or validated general model.
 
 ## Why this is useful
 
@@ -34,13 +34,13 @@ The student model learns to choose **one safe next action** rather than trying t
 | Base Qwen2.5-0.5B, fp32 | 0% | 0% | 0/3 |
 | Base Qwen2.5-0.5B, 4-bit | 16.7% | 11.1% | 0/3 |
 | LoRA fp32, 200 steps (MPS) | 100% | 88.9% | 3/3 |
-| 4-bit QLoRA-equivalent, 200 iters (MLX) | 100% | 72.2% | 3/3 |
+| 4-bit QLoRA-equivalent, 400 iters (MLX) | 100% | 83.3% | 3/3 |
 
 **What this shows**
 
 - Fine-tuning reliably teaches the JSON contract: base models fail it, tuned models hit 100% valid JSON.
 - The 0.5B student gets close to but does **not** beat the heuristic at this scale. 18 items means one item is 5.6 points; none of these gaps is statistically meaningful.
-- 4-bit MLX is the only zero-account 4-bit path here. It is a QLoRA-equivalent (4-bit base + LoRA), **not** bitsandbytes QLoRA, and trails fp32 LoRA at equal iterations.
+- 4-bit MLX is the only zero-account 4-bit path here. It is a QLoRA-equivalent (4-bit base + LoRA), **not** bitsandbytes QLoRA. At 400 iterations it reaches 83.3% with a 34 MB adapter and under 1 GB peak memory, still trailing fp32 LoRA.
 - Safety remains layered: a deterministic pre-screen blocks credential and destructive patterns before any tool call, independent of model accuracy.
 
 **What it does not show:** production readiness, general tool-routing ability, or that synthetic self-authored data is release-grade. Human audit is still missing. Details and failures: [experiment results](docs/reports/EXPERIMENT_RESULTS.md), [phase status](docs/reports/PHASE_STATUS.md), [model card](docs/MODEL_CARD.md), [data card](docs/DATA_CARD.md).
@@ -128,11 +128,11 @@ python -m scripts.prepare_mlx
 .venv-mlx/bin/python -m mlx_lm lora \
   --model mlx-community/Qwen2.5-0.5B-Instruct-4bit \
   --train --data data/mlx --fine-tune-type lora --num-layers 16 \
-  --batch-size 4 --iters 200 --learning-rate 2e-4 --max-seq-length 512 \
-  --mask-prompt --adapter-path runs/local/mlx_qlora/adapter --seed 42
+  --batch-size 4 --iters 400 --learning-rate 2e-4 --max-seq-length 512 \
+  --mask-prompt --adapter-path runs/local/mlx_qlora400/adapter --seed 42
 .venv-mlx/bin/python -m scripts.mlx_eval \
-  --adapter-path runs/local/mlx_qlora/adapter \
-  --out runs/local/mlx_qlora/eval_tuned.json
+  --adapter-path runs/local/mlx_qlora400/adapter \
+  --out runs/local/mlx_qlora400/eval_tuned.json
 ```
 
 ## Browser GPU stage: train QLoRA, LoRA, optional full

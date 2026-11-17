@@ -16,7 +16,8 @@ Last updated: 2026-11-17. Two environments:
 | **LoRA, 200 steps (selected)** | 18/18 (**100%**) | 16/18 (**88.89%**) | 16/18 | **3/3 (100%)** | Lowest validation loss 0.1696 |
 | LoRA, 400 steps | 18/18 (100%) | 16/18 (88.89%) | 16/18 | 3/3 (100%) | Validation loss rose to 0.1725; overfitting begins |
 | Base Qwen2.5-0.5B, 4-bit (MLX) | 3/18 (16.67%) | 2/18 (11.11%) | 2/18 | 0/3 (0%) | Quantized base still ignores the contract |
-| **4-bit QLoRA-equivalent, 200 iters (MLX)** | 18/18 (100%) | 13/18 (72.22%) | 13/18 | 3/3 (100%) | 4-bit frozen base + LoRA; not bitsandbytes |
+| 4-bit QLoRA-equivalent, 200 iters (MLX) | 18/18 (100%) | 13/18 (72.22%) | 13/18 | 3/3 (100%) | Validation loss 0.368 |
+| **4-bit QLoRA-equivalent, 400 iters (MLX, selected)** | 18/18 (**100%**) | 15/18 (**83.33%**) | 15/18 | **3/3 (100%)** | Validation loss 0.165; still falling |
 | QLoRA / full-layer (CUDA) | not run | — | — | — | No authenticated free GPU |
 
 Run `lora200` (primary) details: 210 train / 18 valid / 18 test; LoRA r=8, alpha=16, q_proj+v_proj, 540,672 trainable parameters; batch 4 × grad-accum 2, lr 2e-4, cosine, 512 tokens, seed 42; train loss 0.3648, validation loss 0.1696; train runtime 432.8 s, wall 505 s; peak MPS driver memory 9.59 GB; adapter saved to `runs/local/lora200/adapter` (git-ignored).
@@ -62,12 +63,12 @@ This is defense in depth, not a substitute for a better model: the screen only c
 bitsandbytes 4-bit needs CUDA. The zero-account alternative is MLX on Apple Silicon: a **4-bit quantized frozen base** plus LoRA adapters — the same QLoRA idea, different kernel. It is labelled separately and never called bitsandbytes QLoRA.
 
 - Base: `mlx-community/Qwen2.5-0.5B-Instruct-4bit`; LoRA rank 8 on 16 layers, **2.933M trainable parameters (0.594%)**.
-- Training: 200 iterations, batch 4, lr 2e-4, max seq 512, prompt-masked loss, seed 42.
-- Validation loss: 3.380 → 1.616 → 1.114 → 0.468 → **0.368** at 50/100/150/200 iterations — still falling, so 200 is not a converged checkpoint.
-- Tuned: **18/18 valid JSON, 13/18 (72.22%) route accuracy, 3/3 refusal recall**. Base 4-bit: 3/18 valid JSON, 2/18 correct.
-- Failures: all three `retrieve` items → `answer`; two `ambiguity` items → `answer` and `refuse`. The adapter has not yet learned the retrieval boundary.
-- Adapter: 34 MB; evaluation peak 0.678 GB; 18 prompts in 4.3 s.
-- Compared with fp32 LoRA at 200 steps (88.89%), the 4-bit path is **16.7 points worse** at equal iterations on this tiny test. It is a memory/access workaround, not an accuracy win.
+- Training budget: 200 and 400 iterations, batch 4, lr 2e-4, max seq 512, prompt-masked loss, seed 42.
+- Validation loss: 3.380 → 0.878 → 0.274 → 0.196 → **0.165** at 100/200/300/400 iterations. It is still falling at 400, so the model is not converged; 400 was the pre-set local budget.
+- Tuned 400 (selected): **18/18 valid JSON, 15/18 (83.33%) route accuracy, 3/3 refusal recall**. Tuned 200: 13/18 (72.22%), validation loss 0.368. Base 4-bit: 3/18 valid JSON, 2/18 correct.
+- Failures at 400: `ret-4-2` retrieve → clarify, `cal-4-0` calculate → clarify, `ans-4-0` answer → retrieve. The retrieval and calculation boundaries are not fully learned.
+- Adapter: 34 MB; evaluation peak 0.656 GB; 18 prompts in 4.0 s.
+- Compared with fp32 LoRA at 200 steps (88.89%), the selected 4-bit 400-iteration run is **5.6 points lower** on this test. It is a memory/access workaround, not an accuracy win.
 
 ## Other measurements
 
