@@ -2,7 +2,7 @@
 
 **OpenCode/DeepSeek-guided research on small fine-tuned AI tool routers, synthetic dataset quality, RAG, multi-role agents, prompt caching, and honest evaluation.**
 
-Status: **open-source starter laboratory**. CPU tests and a hand-coded heuristic baseline have run; actual cloud GPU fine-tuning and DeepSeek/OpenCode teacher expansion have **not** been performed in this deliverable. Do not describe it as a validated fine-tuned model until cloud results exist.
+Status: **local research prototype with measured results**. CPU tests, an expanded 210-example training set and a local Apple-Silicon LoRA adapter have run: the tuned 0.5B router reaches **88.9% held-out routing** (100% valid JSON, 3/3 refusals) versus **94.4%** for the hand-coded heuristic, and the base model scores 0% valid JSON. Cloud QLoRA and paid teacher expansion have **not** run. Do not describe this as a production or validated general model.
 
 ## Why this is useful
 
@@ -13,6 +13,7 @@ The student model learns to choose **one safe next action** rather than trying t
 | Development/teacher | [OpenCode](https://opencode.ai/) + configured DeepSeek or approved free alternative | Browser-hosted GitHub Codespaces | Free quota only; DeepSeek API may be paid |
 | Code/CI | Python, pytest, GitHub Actions | Browser-hosted Codespaces + GitHub | Free personal quotas |
 | Cloud training | [TRL](https://huggingface.co/docs/trl/), Transformers, PEFT, bitsandbytes | [Colab Free](https://colab.research.google.com/) or [Kaggle](https://www.kaggle.com/code) GPU | Free accelerator if allocated |
+| Local training (workaround) | TRL, Transformers, PEFT on Metal/MPS | Apple Silicon Mac | No cash; ~1 GB model download, fp32 LoRA only |
 | Student | `Qwen/Qwen2.5-0.5B-Instruct` | Cloud GPU only | Open-weight base; check base license |
 | RAG/tools | Lightweight Python package in this repo | Codespaces CPU or cloud GPU | No inference bill for heuristic path |
 | Caching | SQLite response cache; optional provider prefix cache | Codespaces CPU | Provider test opt-in |
@@ -83,10 +84,10 @@ If free cloud GPU is unavailable, the same LoRA path can run on an Apple Silicon
 uv venv --python 3.11 .venv-train
 uv pip install --python .venv-train/bin/python -r requirements-local-mps.txt
 .venv-train/bin/python -m scripts.cloud_train --mode lora --device mps \
-  --steps 100 --batch-size 4 --gradient-accumulation 2 --eval-max 18 \
-  --output-dir runs/local/lora100
+  --steps 200 --batch-size 4 --gradient-accumulation 2 --eval-max 18 \
+  --output-dir runs/local/lora200
 .venv-train/bin/python -m scripts.cloud_harness --device mps \
-  --adapter-path runs/local/lora100/adapter \
+  --adapter-path runs/local/lora200/adapter \
   --request "Find the prompt caching documentation"
 ```
 

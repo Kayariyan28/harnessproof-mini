@@ -1,0 +1,199 @@
+{
+  "generated": "2026-11-17",
+  "environment": {
+    "machine": "Apple M4 Max, 40-core GPU, 48 GB unified memory",
+    "device": "mps",
+    "precision": "torch.float32",
+    "python": "3.11",
+    "torch": "2.15.0",
+    "transformers": "5.23.0",
+    "trl": "0.29.1",
+    "peft": "0.21.3",
+    "datasets": "4.8.5",
+    "base_model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "lora": {
+      "rank": 8,
+      "alpha": 16,
+      "dropout": 0.05,
+      "targets": [
+        "q_proj",
+        "v_proj"
+      ]
+    },
+    "batch_size": 4,
+    "gradient_accumulation": 2,
+    "learning_rate": 0.0002,
+    "max_length": 512,
+    "seed": 42
+  },
+  "data": {
+    "train": 210,
+    "valid": 18,
+    "test": 18,
+    "families": 42,
+    "train_sha256_16": "795f5dc29f2d8d26",
+    "valid_sha256_16": "0614e5e2d301b550",
+    "test_meta_sha256_16": "ea0586e5d80129cf"
+  },
+  "selection_rule": "lowest validation loss; rule fixed before the 400-step run",
+  "selected": "lora200",
+  "caveat": "18-item test; four configurations compared on it; treat 88.89% as an optimistic point estimate. No human audit of the dataset.",
+  "runs": {
+    "lora40": {
+      "steps": 40,
+      "train_loss": 1.206619,
+      "validation_loss": 0.995357,
+      "training_runtime_s": 265.51,
+      "wall_time_s": 328.89,
+      "peak_mps_memory_gb": 3.643,
+      "trainable_parameters": 540672,
+      "valid_json_rate": 0.6111,
+      "route_accuracy": 0.2778,
+      "tool_accuracy": 0.2778,
+      "refusal_recall": 0.3333,
+      "by_taxonomy": {
+        "ambiguity": {
+          "n": 3,
+          "route_accuracy": 0.0
+        },
+        "evidence_grounding": {
+          "n": 3,
+          "route_accuracy": 0.0
+        },
+        "freshness": {
+          "n": 3,
+          "route_accuracy": 0.6667
+        },
+        "no_tool_needed": {
+          "n": 3,
+          "route_accuracy": 0.0
+        },
+        "tool_safety": {
+          "n": 3,
+          "route_accuracy": 0.3333
+        },
+        "tool_selection": {
+          "n": 3,
+          "route_accuracy": 0.6667
+        }
+      }
+    },
+    "lora100": {
+      "steps": 100,
+      "train_loss": 0.676752,
+      "validation_loss": 0.639823,
+      "training_runtime_s": 271.16,
+      "wall_time_s": 329.34,
+      "peak_mps_memory_gb": 9.613,
+      "trainable_parameters": 540672,
+      "valid_json_rate": 1.0,
+      "route_accuracy": 0.7222,
+      "tool_accuracy": 0.7222,
+      "refusal_recall": 0.6667,
+      "by_taxonomy": {
+        "ambiguity": {
+          "n": 3,
+          "route_accuracy": 0.3333
+        },
+        "evidence_grounding": {
+          "n": 3,
+          "route_accuracy": 0.6667
+        },
+        "freshness": {
+          "n": 3,
+          "route_accuracy": 1.0
+        },
+        "no_tool_needed": {
+          "n": 3,
+          "route_accuracy": 0.6667
+        },
+        "tool_safety": {
+          "n": 3,
+          "route_accuracy": 0.6667
+        },
+        "tool_selection": {
+          "n": 3,
+          "route_accuracy": 1.0
+        }
+      }
+    },
+    "lora200": {
+      "steps": 200,
+      "train_loss": 0.364752,
+      "validation_loss": 0.169638,
+      "training_runtime_s": 432.8,
+      "wall_time_s": 504.99,
+      "peak_mps_memory_gb": 9.589,
+      "trainable_parameters": 540672,
+      "valid_json_rate": 1.0,
+      "route_accuracy": 0.8889,
+      "tool_accuracy": 0.8889,
+      "refusal_recall": 1.0,
+      "by_taxonomy": {
+        "ambiguity": {
+          "n": 3,
+          "route_accuracy": 1.0
+        },
+        "evidence_grounding": {
+          "n": 3,
+          "route_accuracy": 0.6667
+        },
+        "freshness": {
+          "n": 3,
+          "route_accuracy": 1.0
+        },
+        "no_tool_needed": {
+          "n": 3,
+          "route_accuracy": 0.6667
+        },
+        "tool_safety": {
+          "n": 3,
+          "route_accuracy": 1.0
+        },
+        "tool_selection": {
+          "n": 3,
+          "route_accuracy": 1.0
+        }
+      }
+    },
+    "lora400": {
+      "steps": 400,
+      "train_loss": 0.208873,
+      "validation_loss": 0.172457,
+      "training_runtime_s": 654.94,
+      "wall_time_s": 705.1,
+      "peak_mps_memory_gb": 10.269,
+      "trainable_parameters": 540672,
+      "valid_json_rate": 1.0,
+      "route_accuracy": 0.8889,
+      "tool_accuracy": 0.8889,
+      "refusal_recall": 1.0,
+      "by_taxonomy": {
+        "ambiguity": {
+          "n": 3,
+          "route_accuracy": 0.6667
+        },
+        "evidence_grounding": {
+          "n": 3,
+          "route_accuracy": 1.0
+        },
+        "freshness": {
+          "n": 3,
+          "route_accuracy": 1.0
+        },
+        "no_tool_needed": {
+          "n": 3,
+          "route_accuracy": 0.6667
+        },
+        "tool_safety": {
+          "n": 3,
+          "route_accuracy": 1.0
+        },
+        "tool_selection": {
+          "n": 3,
+          "route_accuracy": 1.0
+        }
+      }
+    }
+  }
+}
