@@ -13,12 +13,12 @@ Last verified: 2026-11-17 (macOS, CPU-only, Python 3.14.4, venv `.venv`)
 | P1 DeepSeek teacher augmentation | **blocked (cost)** | Configured route `opencode-go/deepseek-v4.1-flash` is metered ($0.15/M input, $0.60/M output); brief forbids paid teacher calls. No `augment` run performed |
 | P1 publish-grade dataset | blocked | Publish gate requires ≥200 train examples; only 54 exist. No human audit performed |
 | P2 cloud LoRA/QLoRA/full | untested | No NVIDIA GPU in this environment. Kaggle CLI not installed/authenticated; Colab not opened |
-| P2 Kaggle bundle preparation | locally tested (offline) | `prepare_kaggle` dry-run produced patched notebook + private `kernel-metadata.json` (T4, internet on) for a placeholder repo/user; deleted after check. No submission made |
+| P2 Kaggle bundle preparation | locally tested (offline) | `prepare_kaggle` produced `runs/kaggle_submit` with `REPO_URL` patched to the public repo, private T4 kernel `Kayariyan28/harnessproof-mini-lab`, internet on. Kaggle CLI 2.2.5 installed but **not authenticated**; no submission made |
 | P3 trained multi-agent harness | untested (GPU) | CPU reference pipeline is implemented and exercised; adapter inference requires the P2 adapter |
 | P4 RAG + context | partially tested | Local document retrieval and bounded context unit tests pass; tokenizer token counts pending GPU runtime |
 | P5 exact response caching | locally tested | `benchmark_cache` → 5 simulated requests, 3 hits (60%), 0 provider requests; no latency or provider comparison |
 | P5 provider prefix cache | untested | Requires an approved free provider with reported cache metrics |
-| P6 public GitHub | not started | No destination repo approved or created; no remote configured. GitHub CLI is authenticated locally but nothing was pushed |
+| P6 public GitHub | published + CI green | https://github.com/Kayariyan28/harnessproof-mini — commit `4c38115`; GitHub Actions run `44118302458` passed all CPU checks in 14s on ubuntu-latest/Python 3.11 |
 
 ## Known baseline failure (real output, not hidden)
 
@@ -26,8 +26,15 @@ Last verified: 2026-11-17 (macOS, CPU-only, Python 3.14.4, venv `.venv`)
 
 ## Blockers for the next phase
 
-1. **GPU training**: needs Kaggle/Colab free GPU plus credentials and an explicit approval to submit a remote job.
+1. **GPU training**: the private Kaggle bundle is ready at `runs/kaggle_submit/`. Remaining steps need the user's Kaggle OAuth (`kaggle auth login`) and an explicit approval to submit:
+   ```bash
+   .venv/bin/python -m kaggle kernels push -p runs/kaggle_submit --accelerator NvidiaTeslaT4
+   .venv/bin/python -m kaggle kernels status Kayariyan28/harnessproof-mini-lab
+   .venv/bin/python -m kaggle kernels output Kayariyan28/harnessproof-mini-lab \
+     --file-pattern '.*summary\.json$' -p runs/kaggle_results
+   ```
+   Nothing has been submitted. The free T4 may be unavailable or quota-limited.
 2. **Teacher data**: the only configured DeepSeek route is paid; augmentation stays disabled unless the user approves spend or provides a verified $0 route.
-3. **Publication**: needs a user-owned destination repo and approval; no secrets, weights or generated adapters have been uploaded.
+3. **Publication**: source is public; no weights, adapters or secrets have been uploaded. A Hugging Face adapter release still requires a separate approval and license check.
 
 No fine-tuned-model performance number exists. Every number above is a CPU/heuristic or offline measurement.
